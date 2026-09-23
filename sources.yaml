@@ -21,12 +21,13 @@
   language: ru
   enabled: true
 
+# Отключено: общий RSS сайта не содержит статей из раздела /ai, отдельного RSS для этого раздела нет. Пост-MVP: HTML-парсер для vc.ru/ai.
 - name: VC.ru — раздел AI
-  url: https://vc.ru/rss/ai
+  url: https://vc.ru/rss
   type: rss
   topics: [AI-агенты, AI-инструменты, Работа и заработок с AI]
   language: ru
-  enabled: true
+  enabled: false
 
 - name: Telegram @vibecoding_tg
   url: https://t.me/vibecoding_tg
@@ -50,7 +51,7 @@
   enabled: true
 
 - name: Cursor — Changelog/Blog
-  url: https://cursor.com/changelog
+  url: https://cursor.com/changelog/rss.xml
   type: rss
   topics: [Вайбкодинг, AI в программировании]
   language: en
@@ -71,7 +72,7 @@
   enabled: true
 
 - name: TechCrunch — AI
-  url: https://techcrunch.com/category/artificial-intelligence/
+  url: https://techcrunch.com/category/artificial-intelligence/feed/
   type: rss
   topics: [AI-агенты, AI-инструменты]
   language: en
