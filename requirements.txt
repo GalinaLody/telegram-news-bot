@@ -1,0 +1,6 @@
+aiogram
+feedparser
+telethon
+httpx
+python-dotenv
+pytest

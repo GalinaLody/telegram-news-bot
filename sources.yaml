@@ -1,0 +1,92 @@
+# Источники для сбора новостей (MVP).
+# Список составлен на основе sources_mvp.md (11 источников, 5 тем).
+# Плоский список — каждый источник указан один раз, темы перечислены
+# в поле topics. Habr — исключение: указан двумя отдельными записями
+# (лента AI и лента Программирование), т.к. у хабов разные RSS-адреса.
+# Поле enabled управляет тем, забирается ли источник в MVP:
+# AI Drip (архив рассылки, type: scrape) и Product Hunt (GraphQL API,
+# type: api) отключены — способ сбора для них ещё предстоит реализовать.
+
+- name: Habr (хаб AI)
+  url: https://habr.com/ru/rss/hub/artificial_intelligence/all/
+  type: rss
+  topics: [AI-агенты, AI-инструменты, Работа и заработок с AI]
+  language: ru
+  enabled: true
+
+- name: Habr (хаб Программирование)
+  url: https://habr.com/ru/rss/hub/programming/all/
+  type: rss
+  topics: [Вайбкодинг, AI в программировании]
+  language: ru
+  enabled: true
+
+- name: VC.ru — раздел AI
+  url: https://vc.ru/rss/ai
+  type: rss
+  topics: [AI-агенты, AI-инструменты, Работа и заработок с AI]
+  language: ru
+  enabled: true
+
+- name: Telegram @vibecoding_tg
+  url: https://t.me/vibecoding_tg
+  type: telegram
+  topics: [Вайбкодинг]
+  language: ru
+  enabled: true
+
+- name: Telegram @veryvibecoding
+  url: https://t.me/veryvibecoding
+  type: telegram
+  topics: [Вайбкодинг, AI-агенты]
+  language: ru
+  enabled: true
+
+- name: Simon Willison's Weblog
+  url: https://simonwillison.net/atom/everything/
+  type: rss
+  topics: [AI-агенты, AI в программировании]
+  language: en
+  enabled: true
+
+- name: Cursor — Changelog/Blog
+  url: https://cursor.com/changelog
+  type: rss
+  topics: [Вайбкодинг, AI в программировании]
+  language: en
+  enabled: true
+
+- name: GitHub Blog / Changelog
+  url: https://github.blog/changelog/feed/
+  type: rss
+  topics: [AI в программировании]
+  language: en
+  enabled: true
+
+- name: JetBrains Blog
+  url: https://blog.jetbrains.com/feed/
+  type: rss
+  topics: [AI в программировании]
+  language: en
+  enabled: true
+
+- name: TechCrunch — AI
+  url: https://techcrunch.com/category/artificial-intelligence/
+  type: rss
+  topics: [AI-агенты, AI-инструменты]
+  language: en
+  enabled: true
+
+- name: AI Drip (newsletter)
+  url: https://ai-drip.dev
+  type: scrape
+  topics: [AI-инструменты]
+  language: en
+  enabled: false
+
+- name: Product Hunt — категория AI
+  url: https://producthunt.com/topics/artificial-intelligence
+  type: api
+  topics: [AI-инструменты]
+  language: en
+  enabled: false
