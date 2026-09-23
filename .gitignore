@@ -4,5 +4,7 @@ __pycache__/
 venv/
 .venv/
 *.pyc
+*.session
+*.session-journal
 *.md
 Product Brief - Telegram-бот AI-дайджест (MVP).pdf
