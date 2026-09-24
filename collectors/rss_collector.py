@@ -1,7 +1,8 @@
+import calendar
 import logging
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -48,9 +49,11 @@ def fetch_rss(
             continue
 
         if getattr(entry, "published_parsed", None):
-            published_at = datetime(*entry.published_parsed[:6])
+            published_at = datetime.fromtimestamp(
+                calendar.timegm(entry.published_parsed), tz=timezone.utc
+            )
         else:
-            published_at = datetime.now()
+            published_at = datetime.now(timezone.utc)
 
         news_list.append(
             News(
