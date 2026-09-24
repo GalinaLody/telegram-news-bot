@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from telethon import TelegramClient
+from telethon.sessions import StringSession
 
 from models import News
 
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 TG_API_ID = os.getenv("TG_API_ID")
 TG_API_HASH = os.getenv("TG_API_HASH")
-SESSION_NAME = "telegram_news_bot"
+TG_SESSION = os.getenv("TG_SESSION")
 
 
 def strip_markdown(text: str) -> str:
@@ -32,12 +33,18 @@ def strip_markdown(text: str) -> str:
 
 
 async def fetch_telegram_channel(channel_username: str, topic: str, since_days: int = 7) -> list[News]:
+    if not TG_SESSION:
+        raise RuntimeError(
+            "Переменная окружения TG_SESSION не найдена. Сгенерируйте строку сессии "
+            "через generate_session_string.py и добавьте её в .env."
+        )
+
     channel = channel_username.lstrip("@")
     cutoff = datetime.now(timezone.utc) - timedelta(days=since_days)
     news_list = []
 
     try:
-        async with TelegramClient(SESSION_NAME, int(TG_API_ID), TG_API_HASH) as client:
+        async with TelegramClient(StringSession(TG_SESSION), int(TG_API_ID), TG_API_HASH) as client:
             async for message in client.iter_messages(channel):
                 if not message.date:
                     continue
