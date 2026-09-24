@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -21,6 +22,15 @@ TG_API_HASH = os.getenv("TG_API_HASH")
 SESSION_NAME = "telegram_news_bot"
 
 
+def strip_markdown(text: str) -> str:
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"__(.+?)__", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text, flags=re.DOTALL)
+    text = re.sub(r"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", r"\1", text, flags=re.DOTALL)
+    return text
+
+
 async def fetch_telegram_channel(channel_username: str, topic: str, since_days: int = 7) -> list[News]:
     channel = channel_username.lstrip("@")
     cutoff = datetime.now(timezone.utc) - timedelta(days=since_days)
@@ -37,6 +47,8 @@ async def fetch_telegram_channel(channel_username: str, topic: str, since_days: 
                 text = message.text or ""
                 if not text:
                     continue
+
+                text = strip_markdown(text)
 
                 news_list.append(
                     News(
