@@ -1,17 +1,24 @@
+import os
 import sys
-from collections import Counter
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 
+import storage
+from bot import bot, send_message
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
+from digest import build_digest, dedupe, filter_recent, rank, split_for_telegram
 from models import News
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 
+load_dotenv()
+
 SOURCES_PATH = Path(__file__).resolve().parent / "sources.yaml"
+OWNER_CHAT_ID = os.getenv("OWNER_CHAT_ID")
 
 
 async def collect_all() -> list[News]:
@@ -52,13 +59,29 @@ async def collect_all() -> list[News]:
     return all_news
 
 
+async def run_weekly_digest(dry_run: bool = True) -> None:
+    news_items = await collect_all()
+    recent_news = filter_recent(news_items)
+    deduped_news = dedupe(recent_news)
+    ranked_news = rank(deduped_news)
+    digest_text = build_digest(ranked_news)
+    parts = split_for_telegram(digest_text)
+
+    if dry_run:
+        for i, part in enumerate(parts, start=1):
+            print(f"--- Часть {i}/{len(parts)} ---")
+            print(part)
+    else:
+        for part in parts:
+            await send_message(OWNER_CHAT_ID, part)
+
+        for news in ranked_news:
+            storage.mark_sent(news.url)
+
+        await bot.session.close()
+
+
 if __name__ == "__main__":
     import asyncio
 
-    news_items = asyncio.run(collect_all())
-
-    print(f"Всего собрано новостей: {len(news_items)}\n")
-
-    counts = Counter(news.source for news in news_items)
-    for source_name, count in counts.items():
-        print(f"{source_name}: {count}")
+    asyncio.run(run_weekly_digest(dry_run=False))

@@ -20,7 +20,7 @@ def dedupe(news_list: list[News]) -> list[News]:
     return [news for news in news_list if not storage.is_sent(news.url)]
 
 
-def rank(news_list: list[News], target_count: int = 15) -> list[News]:
+def rank(news_list: list[News], target_count: int = 25) -> list[News]:
     groups: dict[str, list[News]] = defaultdict(list)
     topic_order = []
     for news in news_list:
