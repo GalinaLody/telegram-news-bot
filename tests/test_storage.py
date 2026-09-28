@@ -1,6 +1,6 @@
 import sqlite3
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import storage
 
@@ -29,8 +29,8 @@ class TestCleanupOld:
         old_url = "https://example.com/old"
         recent_url = "https://example.com/recent"
 
-        old_date = (datetime.now() - timedelta(days=40)).isoformat()
-        recent_date = (datetime.now() - timedelta(days=1)).isoformat()
+        old_date = (datetime.now(timezone.utc) - timedelta(days=40)).isoformat()
+        recent_date = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
 
         with closing(sqlite3.connect(storage.DB_PATH)) as conn:
             conn.execute(

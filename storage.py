@@ -1,11 +1,9 @@
 import sqlite3
-import sys
 from contextlib import closing
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
+from constants import STORAGE_CLEANUP_OLD_DAYS
 
 DB_PATH = Path(__file__).resolve().parent / "digest.db"
 
@@ -40,24 +38,16 @@ def mark_sent(url: str) -> None:
     with closing(_get_connection()) as conn:
         conn.execute(
             "INSERT OR IGNORE INTO sent_news (url, sent_at) VALUES (?, ?)",
-            (url, datetime.now().isoformat()),
+            (url, datetime.now(timezone.utc).isoformat()),
         )
         conn.commit()
 
 
-def cleanup_old(days: int = 30) -> int:
-    cutoff = (datetime.now() - timedelta(days=days)).isoformat()
+def cleanup_old(days: int = STORAGE_CLEANUP_OLD_DAYS) -> int:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     with closing(_get_connection()) as conn:
         cursor = conn.execute(
             "DELETE FROM sent_news WHERE sent_at < ?", (cutoff,)
         )
         conn.commit()
         return cursor.rowcount
-
-
-if __name__ == "__main__":
-    test_url = "https://example.com/test-news"
-
-    print(f"is_sent до mark_sent: {is_sent(test_url)}")
-    mark_sent(test_url)
-    print(f"is_sent после mark_sent: {is_sent(test_url)}")

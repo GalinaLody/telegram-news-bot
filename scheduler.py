@@ -1,6 +1,5 @@
 import logging
 import os
-import sys
 from pathlib import Path
 
 import yaml
@@ -12,9 +11,6 @@ from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
 from digest import build_digest, dedupe, filter_recent, rank, split_for_telegram
 from models import News
-
-sys.stdout.reconfigure(encoding="utf-8")
-sys.stderr.reconfigure(encoding="utf-8")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,7 +25,7 @@ SOURCES_PATH = Path(__file__).resolve().parent / "sources.yaml"
 OWNER_CHAT_ID = os.getenv("OWNER_CHAT_ID")
 
 
-async def collect_all() -> list[News]:
+async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
     with open(SOURCES_PATH, encoding="utf-8") as f:
         sources = yaml.safe_load(f)
 
@@ -37,6 +33,7 @@ async def collect_all() -> list[News]:
     logger.info(f"Источников для сбора: {len(enabled_sources)}")
 
     all_news: list[News] = []
+    failed_sources: list[tuple[str, str]] = []
 
     for source in enabled_sources:
         topics = source.get("topics", [])
@@ -60,6 +57,7 @@ async def collect_all() -> list[News]:
                 continue
         except Exception as exc:
             logger.warning(f"Источник '{source['name']}' упал: {exc}")
+            failed_sources.append((source["name"], str(exc)))
             continue
 
         if len(topics) > 1:
@@ -69,15 +67,23 @@ async def collect_all() -> list[News]:
         logger.info(f"{source['name']}: получено {len(news_items)} новостей")
         all_news.extend(news_items)
 
-    return all_news
+    return all_news, failed_sources
 
 
 async def run_weekly_digest(dry_run: bool = True) -> None:
     try:
-        news_items = await collect_all()
+        news_items, failed_sources = await collect_all()
         logger.info(f"Всего собрано новостей: {len(news_items)}")
 
-        recent_news = filter_recent(news_items)
+        seen_urls: set[str] = set()
+        unique_news: list[News] = []
+        for news in news_items:
+            if news.url not in seen_urls:
+                seen_urls.add(news.url)
+                unique_news.append(news)
+        logger.info(f"После удаления повторов внутри сбора: {len(unique_news)}")
+
+        recent_news = filter_recent(unique_news)
         logger.info(f"После filter_recent: {len(recent_news)}")
 
         deduped_news = dedupe(recent_news)
@@ -86,7 +92,16 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
         ranked_news = rank(deduped_news)
         logger.info(f"После rank: {len(ranked_news)}")
 
-        digest_text = build_digest(ranked_news)
+        if ranked_news:
+            digest_text = build_digest(ranked_news)
+        else:
+            logger.info("Нет новых новостей")
+            digest_text = "На этой неделе новых новостей не нашлось."
+
+        if failed_sources:
+            failed_names = ", ".join(name for name, _ in failed_sources)
+            digest_text = f"⚠️ Без новостей (ошибка сбора): {failed_names}\n\n{digest_text}"
+
         parts = split_for_telegram(digest_text)
 
         if dry_run:
@@ -104,6 +119,13 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
                 f"Дайджест успешно отправлен: {len(parts)} частей, "
                 f"{len(ranked_news)} новостей помечено как отправленные"
             )
+
+            # Сбой очистки не должен выглядеть как сбой уже доставленного дайджеста.
+            try:
+                removed = storage.cleanup_old()
+                logger.info(f"cleanup_old: удалено старых записей: {removed}")
+            except Exception:
+                logger.exception("Не удалось очистить старые записи sent_news")
     except Exception as exc:
         logger.exception("Ошибка при формировании/отправке дайджеста")
 
