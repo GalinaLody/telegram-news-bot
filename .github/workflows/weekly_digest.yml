@@ -1,0 +1,56 @@
+name: Weekly AI Digest
+
+on:
+  schedule:
+    # 0 4 * * 1 — это 07:00 по Europe/Istanbul (UTC+3) каждый понедельник.
+    - cron: '0 4 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Режим предпросмотра (без реальной отправки)'
+        required: false
+        default: false
+        type: boolean
+
+# contents: write — нужно для шага с коммитом digest.db.
+permissions:
+  contents: write
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+    # Защита от зависшего RSS-источника: таймаут в коде уже есть,
+    # это дополнительная страховка на уровне всего задания.
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - run: pip install -r requirements.txt
+
+      - name: Run digest
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          OWNER_CHAT_ID: ${{ secrets.OWNER_CHAT_ID }}
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_SESSION: ${{ secrets.TG_SESSION }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            python main.py --dry-run
+          else
+            python main.py
+          fi
+
+      # Коммит идёт только если файл реально изменился (git diff --staged --quiet).
+      - name: Commit updated digest.db
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -f digest.db
+          git diff --staged --quiet || git commit -m "chore: update digest.db after weekly run [skip ci]"
+          git push
