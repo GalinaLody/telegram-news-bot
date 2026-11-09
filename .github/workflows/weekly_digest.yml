@@ -2,8 +2,8 @@ name: Weekly AI Digest
 
 on:
   schedule:
-    # 0 4 * * 1 — это 07:00 по Europe/Istanbul (UTC+3) каждый понедельник.
-    - cron: '0 4 * * 1'
+    # 17 4 * * 1 — это 07:17 по Europe/Istanbul (UTC+3) каждый понедельник.
+    - cron: '17 4 * * 1'
   workflow_dispatch:
     inputs:
       dry_run:
