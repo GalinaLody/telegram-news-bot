@@ -4,7 +4,7 @@ import storage
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
 from config import OWNER_CHAT_ID, load_sources
-from digest import build_digest, dedupe, filter_recent, rank, split_for_telegram
+from digest import build_digest, dedupe, filter_recent, rank, remove_duplicates, split_for_telegram
 from models import News
 from sender import send_message
 
@@ -63,12 +63,7 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
         news_items, failed_sources = await collect_all()
         logger.info(f"Всего собрано новостей: {len(news_items)}")
 
-        seen_urls: set[str] = set()
-        unique_news: list[News] = []
-        for news in news_items:
-            if news.url not in seen_urls:
-                seen_urls.add(news.url)
-                unique_news.append(news)
+        unique_news = remove_duplicates(news_items)
         logger.info(f"После удаления повторов внутри сбора: {len(unique_news)}")
 
         recent_news = filter_recent(unique_news)

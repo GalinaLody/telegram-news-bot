@@ -1,6 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
-from digest import build_digest, dedupe, filter_recent, make_summary, rank, split_for_telegram
+from digest import (
+    build_digest,
+    dedupe,
+    filter_recent,
+    make_summary,
+    rank,
+    remove_duplicates,
+    split_for_telegram,
+)
 from models import News
 
 
@@ -24,6 +32,17 @@ class TestFilterRecent:
         result = filter_recent([recent, old], days=7)
 
         assert result == [recent]
+
+
+class TestRemoveDuplicates:
+    def test_keeps_first_news_with_same_url(self):
+        first = make_news("https://example.com/same", title="First")
+        second = make_news("https://example.com/same", title="Second")
+        other = make_news("https://example.com/other")
+
+        result = remove_duplicates([first, other, second])
+
+        assert result == [first, other]
 
 
 class TestDedupe:

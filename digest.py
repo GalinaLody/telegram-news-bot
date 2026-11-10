@@ -19,6 +19,24 @@ def filter_recent(news_list: list[News], days: int = DIGEST_FILTER_RECENT_DAYS) 
     return [news for news in news_list if news.published_at >= cutoff]
 
 
+def remove_duplicates(news_list: list[News]) -> list[News]:
+    """Убрать повторы URL внутри одного сбора, оставив первую встреченную новость.
+
+    Args:
+        news_list: Новости из всех источников в порядке сбора.
+
+    Returns:
+        Новости с уникальными URL, порядок сохранён.
+    """
+    seen_urls: set[str] = set()
+    unique_news: list[News] = []
+    for news in news_list:
+        if news.url not in seen_urls:
+            seen_urls.add(news.url)
+            unique_news.append(news)
+    return unique_news
+
+
 def dedupe(news_list: list[News]) -> list[News]:
     return [news for news in news_list if not storage.is_sent(news.url)]
 
