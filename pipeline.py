@@ -1,7 +1,7 @@
 import logging
 
 import storage
-from builder import build_digest, split_for_telegram
+from builder import build_parts
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
 from config import OWNER_CHAT_ID, load_sources
@@ -60,6 +60,17 @@ async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
 
 
 async def run_weekly_digest(dry_run: bool = True) -> None:
+    """Собрать новости, сформировать дайджест и отправить его владельцу.
+
+    Каждая часть дайджеста помечается отправленной сразу после доставки. При
+    ошибке владельцу уходит уведомление, и исключение пробрасывается дальше.
+
+    Args:
+        dry_run: Если True, части только печатаются; ничего не отправляется
+            и не помечается в базе.
+    """
+    sent_parts = 0
+    total_parts = 0
     try:
         news_items, failed_sources = await collect_all()
         logger.info(f"Всего собрано новостей: {len(news_items)}")
@@ -76,31 +87,32 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
         ranked_news = rank(deduped_news)
         logger.info(f"После rank: {len(ranked_news)}")
 
-        if ranked_news:
-            digest_text = build_digest(ranked_news)
-        else:
+        if not ranked_news:
             logger.info("Нет новых новостей")
-            digest_text = "На этой неделе новых новостей не нашлось."
 
+        header = ""
         if failed_sources:
             failed_names = ", ".join(name for name, _ in failed_sources)
-            digest_text = f"⚠️ Без новостей (ошибка сбора): {failed_names}\n\n{digest_text}"
+            header = f"⚠️ Без новостей (ошибка сбора): {failed_names}"
 
-        parts = split_for_telegram(digest_text)
+        parts = build_parts(ranked_news, header=header)
+        total_parts = len(parts)
 
         if dry_run:
             for i, part in enumerate(parts, start=1):
-                print(f"--- Часть {i}/{len(parts)} ---")
-                print(part)
+                print(f"--- Часть {i}/{total_parts} ---")
+                print(part.text)
         else:
+            # Новости помечаем сразу после доставки своей части: если упадёт
+            # следующая часть, уже доставленное не придёт повторно.
             for part in parts:
-                send_message(OWNER_CHAT_ID, part)
-
-            for news in ranked_news:
-                storage.mark_sent(news.url)
+                send_message(OWNER_CHAT_ID, part.text)
+                for news in part.news:
+                    storage.mark_sent(news.url)
+                sent_parts += 1
 
             logger.info(
-                f"Дайджест успешно отправлен: {len(parts)} частей, "
+                f"Дайджест успешно отправлен: {total_parts} частей, "
                 f"{len(ranked_news)} новостей помечено как отправленные"
             )
 
@@ -114,11 +126,13 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
         logger.exception("Ошибка при формировании/отправке дайджеста")
 
         if not dry_run:
+            progress = f" Отправлено частей: {sent_parts} из {total_parts}." if total_parts else ""
             try:
                 send_message(
                     OWNER_CHAT_ID,
                     f"Не удалось сформировать/отправить дайджест. Ошибка: "
-                    f"{type(exc).__name__}: {exc}. Подробности — в логах GitHub Actions.",
+                    f"{type(exc).__name__}: {exc}.{progress} "
+                    f"Подробности — в логах GitHub Actions.",
                 )
             except Exception:
                 logger.exception("Не удалось отправить уведомление об ошибке")
