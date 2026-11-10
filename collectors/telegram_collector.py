@@ -1,14 +1,13 @@
 import asyncio
 import logging
-import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
 
-from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
+from config import TG_API_HASH, TG_API_ID, TG_SESSION
 from constants import (
     COLLECTORS_TELEGRAM_COLLECTOR_TITLE_MAX_CHARS,
     COLLECTORS_TELEGRAM_COLLECTOR_VERYVIBECODING_PREVIEW_COUNT,
@@ -16,12 +15,6 @@ from constants import (
     DIGEST_FILTER_RECENT_DAYS,
 )
 from models import News
-
-load_dotenv()
-
-TG_API_ID = os.getenv("TG_API_ID")
-TG_API_HASH = os.getenv("TG_API_HASH")
-TG_SESSION = os.getenv("TG_SESSION")
 
 
 def strip_markdown(text: str) -> str:

@@ -1,13 +1,12 @@
 import asyncio
-import os
 
-from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-load_dotenv()
-api_id = int(os.getenv("TG_API_ID"))
-api_hash = os.getenv("TG_API_HASH")
+import config
+
+api_id = int(config.TG_API_ID)
+api_hash = config.TG_API_HASH
 
 
 async def main() -> None:

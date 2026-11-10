@@ -1,14 +1,10 @@
 import logging
-import os
-from pathlib import Path
-
-import yaml
-from dotenv import load_dotenv
 
 import storage
 from bot import bot, send_message
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
+from config import OWNER_CHAT_ID, load_sources
 from digest import build_digest, dedupe, filter_recent, rank, split_for_telegram
 from models import News
 
@@ -19,17 +15,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-load_dotenv()
-
-SOURCES_PATH = Path(__file__).resolve().parent / "sources.yaml"
-OWNER_CHAT_ID = os.getenv("OWNER_CHAT_ID")
-
 
 async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
-    with open(SOURCES_PATH, encoding="utf-8") as f:
-        sources = yaml.safe_load(f)
-
-    enabled_sources = [s for s in sources if s.get("enabled")]
+    enabled_sources = [s for s in load_sources() if s.get("enabled")]
     logger.info(f"Источников для сбора: {len(enabled_sources)}")
 
     all_news: list[News] = []
