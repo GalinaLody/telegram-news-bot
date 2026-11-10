@@ -1,4 +1,5 @@
 import calendar
+import logging
 import re
 import socket
 from datetime import datetime, timezone
@@ -8,6 +9,8 @@ import feedparser
 
 from constants import COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS
 from models import News
+
+logger = logging.getLogger(__name__)
 
 # feedparser качает ленты через urllib без таймаута — зависший сервер блокировал бы процесс навечно.
 socket.setdefaulttimeout(COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS)
@@ -38,12 +41,13 @@ def fetch_rss(
         if keyword_patterns and not any(p.search(title) for p in keyword_patterns):
             continue
 
-        if getattr(entry, "published_parsed", None):
-            published_at = datetime.fromtimestamp(
-                calendar.timegm(entry.published_parsed), tz=timezone.utc
-            )
-        else:
-            published_at = datetime.now(timezone.utc)
+        parsed_date = getattr(entry, "published_parsed", None) or getattr(
+            entry, "updated_parsed", None
+        )
+        if not parsed_date:
+            logger.warning(f"{source_name}: запись без даты пропущена: {title}")
+            continue
+        published_at = datetime.fromtimestamp(calendar.timegm(parsed_date), tz=timezone.utc)
 
         news_list.append(
             News(
@@ -57,4 +61,3 @@ def fetch_rss(
         )
 
     return news_list
-

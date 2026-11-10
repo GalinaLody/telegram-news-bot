@@ -61,4 +61,3 @@ async def fetch_telegram_channel(
             )
 
     return news_list
-
