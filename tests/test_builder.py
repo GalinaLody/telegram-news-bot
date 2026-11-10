@@ -48,6 +48,27 @@ class TestBuildIntro:
 
 
 class TestBuildParts:
+    def test_very_long_title_still_fits_telegram_limit(self):
+        news_list = [make_news("long", title="слово " * 1000)] + make_many()
+
+        parts = build_parts(news_list)
+
+        assert all(len(part.text) <= 4096 for part in parts)
+        assert any("слово…" in part.text for part in parts)
+
+    def test_title_5000_chars_without_spaces_is_cut_by_length(self):
+        news_list = [make_news("long", title="a" * 5000)]
+
+        parts = build_parts(news_list)
+
+        assert all(len(part.text) <= 4096 for part in parts)
+        assert parts[0].text.splitlines()[2] == "a" * 199 + "…"
+
+    def test_short_title_is_unchanged(self):
+        news_list = [make_news("short", title="Короткий заголовок")]
+
+        assert "Короткий заголовок" in build_parts(news_list)[0].text.splitlines()
+
     def test_date_is_shown_in_istanbul_time(self):
         news = make_news("late-evening")
         news.published_at = datetime(2026, 11, 9, 22, 30, tzinfo=timezone.utc)

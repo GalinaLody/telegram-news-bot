@@ -7,6 +7,7 @@ from constants import (
     DIGEST_BLOCK_SEPARATOR_LEN,
     DIGEST_TELEGRAM_MESSAGE_MAX_LEN,
     DIGEST_TIMEZONE,
+    DIGEST_TITLE_MAX_CHARS,
 )
 from filtering import group_by_topic
 from models import DigestPart, News
@@ -39,11 +40,30 @@ def build_intro(news_list: list[News], now: Optional[datetime] = None) -> str:
     return f"AI-дайджест за {date_text}\nНовостей: {len(news_list)} — {counts}"
 
 
+def _shorten_title(title: str, max_chars: int = DIGEST_TITLE_MAX_CHARS) -> str:
+    """Обрезать слишком длинный заголовок по границе слова и добавить «…».
+
+    Args:
+        title: Заголовок новости.
+        max_chars: Максимальная длина результата, включая «…».
+
+    Returns:
+        Исходный заголовок, если он не длиннее `max_chars`; иначе обрезанный.
+        Если в обрезанной части нет пробелов, заголовок режется по длине.
+    """
+    if len(title) <= max_chars:
+        return title
+    cut = title[: max_chars - 1]
+    if " " in cut and not title[max_chars - 1].isspace():
+        cut = cut.rsplit(" ", 1)[0]
+    return cut.rstrip(" ,.;:-—") + "…"
+
+
 def _format_news(news: News) -> str:
     """Собрать текстовый блок одной новости."""
     return "\n".join(
         [
-            news.title,
+            _shorten_title(news.title),
             make_summary(news.summary_raw),
             news.url,
             news.published_at.astimezone(DIGEST_TIMEZONE).strftime("%d.%m.%Y"),

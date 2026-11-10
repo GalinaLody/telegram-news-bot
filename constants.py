@@ -13,6 +13,8 @@ DIGEST_TIMEZONE = timezone(timedelta(hours=3), "Europe/Istanbul")
 DIGEST_FILTER_RECENT_DAYS = 7
 DIGEST_RANK_TARGET_COUNT = 25
 DIGEST_SUMMARY_MAX_CHARS = 280
+# Максимальная длина заголовка новости в дайджесте: блок одной новости должен помещаться в сообщение.
+DIGEST_TITLE_MAX_CHARS = 200
 # Лимит Telegram Bot API на длину одного сообщения.
 DIGEST_TELEGRAM_MESSAGE_MAX_LEN = 4096
 # Длина разделителя "\n\n" между блоками дайджеста.
