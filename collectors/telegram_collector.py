@@ -1,30 +1,33 @@
-import asyncio
-import logging
-import os
+"""Сборщик новостей из публичных Telegram-каналов через Telethon.
+
+Первый шаг цепочки для источников типа telegram; работает от имени личного
+аккаунта по строке сессии TG_SESSION.
+"""
+
 import re
-import sys
 from datetime import datetime, timedelta, timezone
 
-from dotenv import load_dotenv
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
+from config import TG_API_HASH, TG_API_ID, TG_SESSION
 from constants import (
     COLLECTORS_TELEGRAM_COLLECTOR_TITLE_MAX_CHARS,
-    COLLECTORS_TELEGRAM_COLLECTOR_VERYVIBECODING_PREVIEW_COUNT,
-    COLLECTORS_TELEGRAM_COLLECTOR_VIBECODING_PREVIEW_COUNT,
     DIGEST_FILTER_RECENT_DAYS,
 )
 from models import News
 
-load_dotenv()
-
-TG_API_ID = os.getenv("TG_API_ID")
-TG_API_HASH = os.getenv("TG_API_HASH")
-TG_SESSION = os.getenv("TG_SESSION")
-
 
 def strip_markdown(text: str) -> str:
+    """Убрать Markdown-разметку Telegram, оставив обычный текст.
+
+    Args:
+        text: Текст поста с разметкой (ссылки, **жирный**, __подчёркнутый__,
+            *курсив*, _курсив_).
+
+    Returns:
+        Текст без разметки; у ссылок остаётся только подпись.
+    """
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text, flags=re.DOTALL)
     text = re.sub(r"__(.+?)__", r"\1", text, flags=re.DOTALL)
@@ -38,6 +41,19 @@ async def fetch_telegram_channel(
     topic: str,
     since_days: int = DIGEST_FILTER_RECENT_DAYS,
 ) -> list[News]:
+    """Прочитать свежие посты канала и преобразовать их в новости.
+
+    Args:
+        channel_username: Имя канала, с @ или без.
+        topic: Тема, которую получат все новости канала.
+        since_days: Сколько дней назад от текущего момента брать посты.
+
+    Returns:
+        Новости из текстовых постов канала, от новых к старым.
+
+    Raises:
+        RuntimeError: Не задана переменная окружения TG_SESSION.
+    """
     if not TG_SESSION:
         raise RuntimeError(
             "Переменная окружения TG_SESSION не найдена. Сгенерируйте строку сессии "
@@ -73,33 +89,3 @@ async def fetch_telegram_channel(
             )
 
     return news_list
-
-
-if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
-    logging.basicConfig(level=logging.INFO)
-
-    vibecoding_news = asyncio.run(
-        fetch_telegram_channel(
-            channel_username="vibecoding_tg",
-            topic="Вайбкодинг",
-            since_days=DIGEST_FILTER_RECENT_DAYS,
-        )
-    )
-
-    print(f"Получено новостей: {len(vibecoding_news)}")
-    for news in vibecoding_news[:COLLECTORS_TELEGRAM_COLLECTOR_VIBECODING_PREVIEW_COUNT]:
-        print(f"{news.published_at} — {news.title}")
-
-    veryvibecoding_news = asyncio.run(
-        fetch_telegram_channel(
-            channel_username="veryvibecoding",
-            topic="Вайбкодинг, AI-агенты",
-            since_days=DIGEST_FILTER_RECENT_DAYS,
-        )
-    )
-
-    print(f"\nvery vibecoding — получено новостей: {len(veryvibecoding_news)}")
-    for news in veryvibecoding_news[:COLLECTORS_TELEGRAM_COLLECTOR_VERYVIBECODING_PREVIEW_COUNT]:
-        print(f"{news.published_at} — {news.title}")

@@ -1,5 +1,5 @@
 # Источники для сбора новостей (MVP).
-# Список составлен на основе sources_mvp.md (11 источников, 5 тем).
+# Список составлен на основе docs/sources_mvp.md (11 источников, 5 тем).
 # Плоский список — каждый источник указан один раз, темы перечислены
 # в поле topics. Habr — исключение: указан двумя отдельными записями
 # (лента AI и лента Программирование), т.к. у хабов разные RSS-адреса.
@@ -10,7 +10,7 @@
 - name: Habr (хаб AI)
   url: https://habr.com/ru/rss/hub/artificial_intelligence/all/
   type: rss
-  topics: [AI-агенты, AI-инструменты, Работа и заработок с AI]
+  topics: [Новости AI, AI-агенты, AI-инструменты, Работа и заработок с AI]
   language: ru
   enabled: true
 
@@ -25,7 +25,7 @@
 - name: VC.ru — раздел AI
   url: https://vc.ru/rss
   type: rss
-  topics: [AI-агенты, AI-инструменты, Работа и заработок с AI]
+  topics: [Новости AI, AI-агенты, AI-инструменты, Работа и заработок с AI]
   language: ru
   enabled: false
 
@@ -46,7 +46,7 @@
 - name: Simon Willison's Weblog
   url: https://simonwillison.net/atom/everything/
   type: rss
-  topics: [AI-агенты, AI в программировании]
+  topics: [Новости AI, AI-агенты, AI в программировании]
   language: en
   enabled: true
 
@@ -74,7 +74,7 @@
 - name: TechCrunch — AI
   url: https://techcrunch.com/category/artificial-intelligence/feed/
   type: rss
-  topics: [AI-агенты, AI-инструменты]
+  topics: [Новости AI, AI-агенты, AI-инструменты]
   language: en
   enabled: true
 

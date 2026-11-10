@@ -1,0 +1,42 @@
+name: Watchdog
+
+on:
+  schedule:
+    # 23 9 * * 1 — это 12:23 по Europe/Istanbul (UTC+3) каждый понедельник:
+    # через несколько часов после планового запуска дайджеста.
+    - cron: '23 9 * * 1'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+
+jobs:
+  check-digest-ran:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # Считаем запуски weekly_digest.yml по расписанию, созданные сегодня (по UTC).
+      # Ручной запуск (workflow_dispatch) не считается: он не должен скрывать пропущенный плановый.
+      - name: Count today's digest runs
+        id: count
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          total=$(gh api -X GET "repos/${{ github.repository }}/actions/workflows/weekly_digest.yml/runs" \
+            -f event=schedule -f created=">=$(date -u +%F)" --jq '.total_count')
+          echo "Запусков дайджеста по расписанию сегодня: $total"
+          echo "total=$total" >> "$GITHUB_OUTPUT"
+
+      # Плановых запусков нет — GitHub не стартовал workflow по расписанию, предупреждаем в Telegram.
+      # Успешность запуска не проверяем: об ошибке придёт письмо от GitHub.
+      - name: Notify if digest did not run
+        if: steps.count.outputs.total == '0'
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          OWNER_CHAT_ID: ${{ secrets.OWNER_CHAT_ID }}
+        run: |
+          curl --fail --silent --show-error \
+            "https://api.telegram.org/bot${BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${OWNER_CHAT_ID}" \
+            --data-urlencode "text=⚠️ Дайджест сегодня не запускался. Проверь вкладку Actions в репозитории." \
+            > /dev/null

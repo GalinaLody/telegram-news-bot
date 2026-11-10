@@ -1,25 +1,20 @@
+"""Точка входа: проверяет окружение и запускает сборку и отправку дайджеста."""
+
 import argparse
 import asyncio
-import os
 import sys
 
-from dotenv import load_dotenv
-
-from constants import MAIN_MISSING_ENV_EXIT_CODE
-
-REQUIRED_ENV_VARS = ["BOT_TOKEN", "OWNER_CHAT_ID", "TG_API_ID", "TG_API_HASH", "TG_SESSION"]
-
-
-def check_required_env() -> None:
-    missing = [name for name in REQUIRED_ENV_VARS if not os.getenv(name)]
-    if missing:
-        print("Не заданы обязательные переменные окружения:")
-        for name in missing:
-            print(f"  - {name}")
-        sys.exit(MAIN_MISSING_ENV_EXIT_CODE)
+import config
+from pipeline import run_weekly_digest
 
 
 def main() -> None:
+    """Разобрать аргументы командной строки и запустить недельный дайджест.
+
+    Флаг --dry-run печатает дайджест вместо отправки и ничего не помечает
+    отправленным. Если не заданы обязательные переменные окружения,
+    завершает программу с ненулевым кодом.
+    """
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
@@ -27,11 +22,7 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", default=False)
     args = parser.parse_args()
 
-    load_dotenv()
-    check_required_env()
-
-    # Импорт после проверки: bot.py создаёт Bot(token) при импорте и без токена падает раньше.
-    from scheduler import run_weekly_digest
+    config.check_required_env()
 
     asyncio.run(run_weekly_digest(dry_run=args.dry_run))
 

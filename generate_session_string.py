@@ -1,16 +1,22 @@
-import asyncio
-import os
+"""Разовая утилита: получает строку сессии Telethon для переменной TG_SESSION.
 
-from dotenv import load_dotenv
+Запускается вручную локально (нужны TG_API_ID и TG_API_HASH в .env);
+потребует номер телефона и код подтверждения из Telegram.
+"""
+
+import asyncio
+
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 
-load_dotenv()
-api_id = int(os.getenv("TG_API_ID"))
-api_hash = os.getenv("TG_API_HASH")
+import config
+
+api_id = int(config.TG_API_ID)
+api_hash = config.TG_API_HASH
 
 
 async def main() -> None:
+    """Авторизоваться в Telegram и напечатать строку сессии."""
     async with TelegramClient(StringSession(), api_id, api_hash) as client:
         print(StringSession.save(client.session))
 

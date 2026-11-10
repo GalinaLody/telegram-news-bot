@@ -1,22 +1,23 @@
+"""Сборщик новостей из RSS/Atom-лент.
+
+Первый шаг цепочки для источников типа rss; результат передаётся в pipeline.py.
+"""
+
 import calendar
 import logging
 import re
-import socket
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import List, Optional
 
 import feedparser
-import yaml
+import requests
 
-from constants import COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS
+from constants import COLLECTORS_RSS_TIMEOUT_SECONDS
 from models import News
 
-# feedparser качает ленты через urllib без таймаута — зависший сервер блокировал бы процесс навечно.
-socket.setdefaulttimeout(COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS)
+logger = logging.getLogger(__name__)
 
-SOURCES_PATH = Path(__file__).resolve().parent.parent / "sources.yaml"
+RSS_USER_AGENT = "ai-digest-bot/1.0"
 
 
 def fetch_rss(
@@ -25,7 +26,31 @@ def fetch_rss(
     topic: str,
     keywords: Optional[List[str]] = None,
 ) -> list[News]:
-    feed = feedparser.parse(url)
+    """Скачать RSS-ленту и преобразовать записи в новости.
+
+    Дата берётся из published_parsed, при её отсутствии из updated_parsed;
+    записи без даты пропускаются с предупреждением в лог.
+
+    Args:
+        url: Адрес ленты.
+        source_name: Название источника (попадает в News.source).
+        topic: Тема, которую получат все новости ленты.
+        keywords: Если задан, берутся только записи, в заголовке которых
+            есть слово, начинающееся с одного из ключей.
+
+    Returns:
+        Новости из ленты в порядке записей.
+
+    Raises:
+        RuntimeError: Лента не получена или не разобрана.
+    """
+    response = requests.get(
+        url,
+        timeout=COLLECTORS_RSS_TIMEOUT_SECONDS,
+        headers={"User-Agent": RSS_USER_AGENT},
+    )
+    response.raise_for_status()
+    feed = feedparser.parse(response.content)
 
     # feedparser не бросает исключений при сетевых сбоях и таймаутах — только ставит bozo.
     if feed.bozo and not feed.entries:
@@ -44,12 +69,13 @@ def fetch_rss(
         if keyword_patterns and not any(p.search(title) for p in keyword_patterns):
             continue
 
-        if getattr(entry, "published_parsed", None):
-            published_at = datetime.fromtimestamp(
-                calendar.timegm(entry.published_parsed), tz=timezone.utc
-            )
-        else:
-            published_at = datetime.now(timezone.utc)
+        parsed_date = getattr(entry, "published_parsed", None) or getattr(
+            entry, "updated_parsed", None
+        )
+        if not parsed_date:
+            logger.warning(f"{source_name}: запись без даты пропущена: {title}")
+            continue
+        published_at = datetime.fromtimestamp(calendar.timegm(parsed_date), tz=timezone.utc)
 
         news_list.append(
             News(
@@ -63,26 +89,3 @@ def fetch_rss(
         )
 
     return news_list
-
-
-if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
-    logging.basicConfig(level=logging.INFO)
-
-    with open(SOURCES_PATH, encoding="utf-8") as f:
-        sources = yaml.safe_load(f)
-
-    for source in sources:
-        if source.get("type") != "rss" or not source.get("enabled"):
-            continue
-
-        news_items = fetch_rss(
-            url=source["url"],
-            source_name=source["name"],
-            topic=", ".join(source.get("topics", [])),
-            keywords=source.get("keywords"),
-        )
-
-        first_title = news_items[0].title if news_items else "—"
-        print(f"{source['name']}: получено {len(news_items)} новостей, первая: {first_title}")
