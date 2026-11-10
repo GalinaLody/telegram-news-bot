@@ -6,6 +6,8 @@ venv/
 *.pyc
 *.session
 *.session-journal
-*.md
+docs/TECH_SPEC.md
+docs/PLAN.md
+REFACTOR_PLAN.md
 Product Brief - Telegram-бот AI-дайджест (MVP).pdf
 baseline_dry_run.txt
