@@ -11,6 +11,9 @@ DIGEST_TELEGRAM_MESSAGE_MAX_LEN = 4096
 # Длина разделителя "\n\n" между блоками дайджеста.
 DIGEST_BLOCK_SEPARATOR_LEN = 2
 
+# sender.py
+SENDER_TIMEOUT_SECONDS = 30
+
 # storage.py
 STORAGE_CLEANUP_OLD_DAYS = 30
 

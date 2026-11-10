@@ -1,12 +1,12 @@
 import logging
 
 import storage
-from bot import bot, send_message
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
 from config import OWNER_CHAT_ID, load_sources
 from digest import build_digest, dedupe, filter_recent, rank, split_for_telegram
 from models import News
+from sender import send_message
 
 logging.basicConfig(
     level=logging.INFO,
@@ -98,7 +98,7 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
                 print(part)
         else:
             for part in parts:
-                await send_message(OWNER_CHAT_ID, part)
+                send_message(OWNER_CHAT_ID, part)
 
             for news in ranked_news:
                 storage.mark_sent(news.url)
@@ -119,7 +119,7 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
 
         if not dry_run:
             try:
-                await send_message(
+                send_message(
                     OWNER_CHAT_ID,
                     f"Не удалось сформировать/отправить дайджест. Ошибка: "
                     f"{type(exc).__name__}: {exc}. Подробности — в логах GitHub Actions.",
@@ -128,6 +128,3 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
                 logger.exception("Не удалось отправить уведомление об ошибке")
 
         raise
-    finally:
-        if not dry_run:
-            await bot.session.close()

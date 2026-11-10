@@ -3,6 +3,7 @@ import asyncio
 import sys
 
 import config
+from scheduler import run_weekly_digest
 
 
 def main() -> None:
@@ -14,9 +15,6 @@ def main() -> None:
     args = parser.parse_args()
 
     config.check_required_env()
-
-    # Импорт после проверки: bot.py создаёт Bot(token) при импорте и без токена падает раньше.
-    from scheduler import run_weekly_digest
 
     asyncio.run(run_weekly_digest(dry_run=args.dry_run))
 
