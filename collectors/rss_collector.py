@@ -1,19 +1,18 @@
 import calendar
 import logging
 import re
-import socket
 from datetime import datetime, timezone
 from typing import List, Optional
 
 import feedparser
+import requests
 
-from constants import COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS
+from constants import COLLECTORS_RSS_TIMEOUT_SECONDS
 from models import News
 
 logger = logging.getLogger(__name__)
 
-# feedparser качает ленты через urllib без таймаута — зависший сервер блокировал бы процесс навечно.
-socket.setdefaulttimeout(COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS)
+RSS_USER_AGENT = "ai-digest-bot/1.0"
 
 
 def fetch_rss(
@@ -22,7 +21,13 @@ def fetch_rss(
     topic: str,
     keywords: Optional[List[str]] = None,
 ) -> list[News]:
-    feed = feedparser.parse(url)
+    response = requests.get(
+        url,
+        timeout=COLLECTORS_RSS_TIMEOUT_SECONDS,
+        headers={"User-Agent": RSS_USER_AGENT},
+    )
+    response.raise_for_status()
+    feed = feedparser.parse(response.content)
 
     # feedparser не бросает исключений при сетевых сбоях и таймаутах — только ставит bozo.
     if feed.bozo and not feed.entries:
