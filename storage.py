@@ -1,3 +1,9 @@
+"""SQLite-хранилище отправленных новостей.
+
+Защищает от повторов между выпусками: pipeline.py проверяет здесь URL перед
+отбором и записывает их после доставки каждой части дайджеста.
+"""
+
 import sqlite3
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
@@ -10,10 +16,12 @@ DB_PATH = Path(__file__).resolve().parent / "digest.db"
 
 
 def _get_connection() -> sqlite3.Connection:
+    """Открыть соединение с базой digest.db."""
     return sqlite3.connect(DB_PATH)
 
 
 def _init_db() -> None:
+    """Создать таблицу sent_news, если её нет, и нормализовать сохранённые URL."""
     with closing(_get_connection()) as conn:
         conn.execute(
             """
@@ -59,12 +67,25 @@ _init_db()
 
 
 def is_sent(url: str) -> bool:
+    """Проверить, отправлялась ли новость с таким URL раньше.
+
+    Args:
+        url: Нормализованный URL новости.
+
+    Returns:
+        True, если URL есть в таблице sent_news.
+    """
     with closing(_get_connection()) as conn:
         cursor = conn.execute("SELECT 1 FROM sent_news WHERE url = ?", (url,))
         return cursor.fetchone() is not None
 
 
 def mark_sent(url: str) -> None:
+    """Записать URL как отправленный (повторный вызов ничего не меняет).
+
+    Args:
+        url: Нормализованный URL новости.
+    """
     with closing(_get_connection()) as conn:
         conn.execute(
             "INSERT OR IGNORE INTO sent_news (url, sent_at) VALUES (?, ?)",
@@ -74,6 +95,14 @@ def mark_sent(url: str) -> None:
 
 
 def cleanup_old(days: int = STORAGE_CLEANUP_OLD_DAYS) -> int:
+    """Удалить записи об отправленных новостях старше `days` дней.
+
+    Args:
+        days: Сколько дней хранить записи.
+
+    Returns:
+        Количество удалённых записей.
+    """
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     with closing(_get_connection()) as conn:
         cursor = conn.execute(

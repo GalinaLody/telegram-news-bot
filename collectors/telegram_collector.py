@@ -1,3 +1,9 @@
+"""Сборщик новостей из публичных Telegram-каналов через Telethon.
+
+Первый шаг цепочки для источников типа telegram; работает от имени личного
+аккаунта по строке сессии TG_SESSION.
+"""
+
 import re
 from datetime import datetime, timedelta, timezone
 
@@ -13,6 +19,15 @@ from models import News
 
 
 def strip_markdown(text: str) -> str:
+    """Убрать Markdown-разметку Telegram, оставив обычный текст.
+
+    Args:
+        text: Текст поста с разметкой (ссылки, **жирный**, __подчёркнутый__,
+            *курсив*, _курсив_).
+
+    Returns:
+        Текст без разметки; у ссылок остаётся только подпись.
+    """
     text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)
     text = re.sub(r"\*\*(.+?)\*\*", r"\1", text, flags=re.DOTALL)
     text = re.sub(r"__(.+?)__", r"\1", text, flags=re.DOTALL)
@@ -26,6 +41,19 @@ async def fetch_telegram_channel(
     topic: str,
     since_days: int = DIGEST_FILTER_RECENT_DAYS,
 ) -> list[News]:
+    """Прочитать свежие посты канала и преобразовать их в новости.
+
+    Args:
+        channel_username: Имя канала, с @ или без.
+        topic: Тема, которую получат все новости канала.
+        since_days: Сколько дней назад от текущего момента брать посты.
+
+    Returns:
+        Новости из текстовых постов канала, от новых к старым.
+
+    Raises:
+        RuntimeError: Не задана переменная окружения TG_SESSION.
+    """
     if not TG_SESSION:
         raise RuntimeError(
             "Переменная окружения TG_SESSION не найдена. Сгенерируйте строку сессии "

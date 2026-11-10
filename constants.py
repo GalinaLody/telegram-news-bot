@@ -1,3 +1,5 @@
+"""Числовые и прочие константы проекта, сгруппированные по модулям-потребителям."""
+
 from datetime import timedelta, timezone
 
 # main.py

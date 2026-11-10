@@ -1,3 +1,5 @@
+"""Точка входа: проверяет окружение и запускает сборку и отправку дайджеста."""
+
 import argparse
 import asyncio
 import sys
@@ -7,6 +9,12 @@ from pipeline import run_weekly_digest
 
 
 def main() -> None:
+    """Разобрать аргументы командной строки и запустить недельный дайджест.
+
+    Флаг --dry-run печатает дайджест вместо отправки и ничего не помечает
+    отправленным. Если не заданы обязательные переменные окружения,
+    завершает программу с ненулевым кодом.
+    """
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 

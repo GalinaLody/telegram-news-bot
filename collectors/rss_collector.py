@@ -1,3 +1,8 @@
+"""Сборщик новостей из RSS/Atom-лент.
+
+Первый шаг цепочки для источников типа rss; результат передаётся в pipeline.py.
+"""
+
 import calendar
 import logging
 import re
@@ -21,6 +26,24 @@ def fetch_rss(
     topic: str,
     keywords: Optional[List[str]] = None,
 ) -> list[News]:
+    """Скачать RSS-ленту и преобразовать записи в новости.
+
+    Дата берётся из published_parsed, при её отсутствии из updated_parsed;
+    записи без даты пропускаются с предупреждением в лог.
+
+    Args:
+        url: Адрес ленты.
+        source_name: Название источника (попадает в News.source).
+        topic: Тема, которую получат все новости ленты.
+        keywords: Если задан, берутся только записи, в заголовке которых
+            есть слово, начинающееся с одного из ключей.
+
+    Returns:
+        Новости из ленты в порядке записей.
+
+    Raises:
+        RuntimeError: Лента не получена или не разобрана.
+    """
     response = requests.get(
         url,
         timeout=COLLECTORS_RSS_TIMEOUT_SECONDS,

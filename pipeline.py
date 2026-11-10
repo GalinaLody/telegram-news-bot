@@ -1,3 +1,8 @@
+"""Цепочка недельного дайджеста: сбор, фильтры, сборка, отправка, запись в базу.
+
+Вызывается из main.py; собирает вместе остальные модули проекта.
+"""
+
 import logging
 
 import storage
@@ -19,6 +24,15 @@ logger = logging.getLogger(__name__)
 
 
 async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
+    """Собрать новости из всех включённых источников sources.yaml.
+
+    У каждой новости URL нормализуется, а у источников с несколькими темами
+    тема выбирается по ключевым словам. Сбой одного источника не прерывает сбор.
+
+    Returns:
+        Пара: все собранные новости и список упавших источников
+        в виде (название, текст ошибки).
+    """
     enabled_sources = [s for s in load_sources() if s.get("enabled")]
     topic_keywords = load_topic_keywords()
     logger.info(f"Источников для сбора: {len(enabled_sources)}")
