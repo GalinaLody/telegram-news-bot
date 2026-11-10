@@ -1,7 +1,7 @@
 """Сборка дайджеста: текст блоков и нарезка на сообщения Telegram."""
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Optional, Sequence
 
 from constants import (
     DIGEST_BLOCK_SEPARATOR_LEN,
@@ -16,13 +16,18 @@ from summarizer import make_summary
 EMPTY_DIGEST_TEXT = "На этой неделе новых новостей не нашлось."
 
 
-def build_intro(news_list: list[News], now: Optional[datetime] = None) -> str:
+def build_intro(
+    news_list: list[News],
+    now: Optional[datetime] = None,
+    topic_order: Optional[Sequence[str]] = None,
+) -> str:
     """Собрать вступление дайджеста: дата выпуска и число новостей по темам.
 
     Args:
         news_list: Отобранные новости.
         now: Момент запуска; по умолчанию текущее время. Дата берётся
             по времени Стамбула.
+        topic_order: Порядок тем (порядок ключей topics.yaml).
 
     Returns:
         Две строки вида «AI-дайджест за 10.11.2026» и «Новостей: 3 — Тема: 2, ...»;
@@ -35,7 +40,7 @@ def build_intro(news_list: list[News], now: Optional[datetime] = None) -> str:
     now = now or datetime.now(timezone.utc)
     date_text = now.astimezone(DIGEST_TIMEZONE).strftime("%d.%m.%Y")
     counts = ", ".join(
-        f"{topic}: {len(topic_news)}" for topic, topic_news in group_by_topic(news_list).items()
+        f"{topic}: {len(topic_news)}" for topic, topic_news in group_by_topic(news_list, topic_order).items()
     )
     return f"AI-дайджест за {date_text}\nНовостей: {len(news_list)} — {counts}"
 
@@ -71,14 +76,16 @@ def _format_news(news: News) -> str:
     )
 
 
-def _build_units(news_list: list[News]) -> list[tuple[str, list[News]]]:
+def _build_units(
+    news_list: list[News], topic_order: Optional[Sequence[str]] = None
+) -> list[tuple[str, list[News]]]:
     """Разбить дайджест на неделимые единицы «текст + новости в нём».
 
     Заголовок темы склеивается с первой новостью темы, чтобы он не мог
     остаться в конце части без новостей под ним.
     """
     units: list[tuple[str, list[News]]] = []
-    for topic, topic_news in group_by_topic(news_list).items():
+    for topic, topic_news in group_by_topic(news_list, topic_order).items():
         heading = f"=== {topic} ==="
         for index, news in enumerate(topic_news):
             block = _format_news(news)
@@ -92,6 +99,7 @@ def build_parts(
     news_list: list[News],
     header: str = "",
     max_len: int = DIGEST_TELEGRAM_MESSAGE_MAX_LEN,
+    topic_order: Optional[Sequence[str]] = None,
 ) -> list[DigestPart]:
     """Собрать дайджест и нарезать его на части не длиннее `max_len`.
 
@@ -104,12 +112,14 @@ def build_parts(
         news_list: Отобранные новости.
         header: Текст в начале первой части (предупреждение, вступление).
         max_len: Максимальная длина одной части.
+        topic_order: Порядок разделов (порядок ключей topics.yaml); темы вне него
+            идут в конце в порядке появления.
 
     Returns:
         Части в порядке отправки. Для пустого списка новостей — одна часть
         с сообщением об отсутствии новостей и пустым `news`.
     """
-    units = _build_units(news_list)
+    units = _build_units(news_list, topic_order)
     if not units:
         units = [(EMPTY_DIGEST_TEXT, [])]
     if header:

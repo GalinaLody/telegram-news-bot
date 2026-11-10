@@ -7,6 +7,7 @@
 import html
 import re
 from datetime import datetime, timedelta, timezone
+from typing import Optional, Sequence
 
 import storage
 from constants import DIGEST_FILTER_RECENT_DAYS, DIGEST_RANK_TARGET_COUNT
@@ -46,19 +47,29 @@ def assign_topic(
     return source_topics[0]
 
 
-def group_by_topic(news_list: list[News]) -> dict[str, list[News]]:
+def group_by_topic(
+    news_list: list[News], topic_order: Optional[Sequence[str]] = None
+) -> dict[str, list[News]]:
     """Сгруппировать новости по темам.
 
     Args:
         news_list: Новости в произвольном порядке.
+        topic_order: Порядок тем (обычно порядок ключей topics.yaml). Темы,
+            которых в нём нет, идут в конце в порядке первого появления.
 
     Returns:
-        Словарь «тема -> новости темы». Темы идут в порядке первого появления,
-        новости внутри темы сохраняют исходный порядок.
+        Словарь «тема -> новости темы» без пустых тем. Новости внутри темы
+        сохраняют исходный порядок.
     """
-    groups: dict[str, list[News]] = {}
+    by_appearance: dict[str, list[News]] = {}
     for news in news_list:
-        groups.setdefault(news.topic, []).append(news)
+        by_appearance.setdefault(news.topic, []).append(news)
+
+    groups: dict[str, list[News]] = {}
+    for topic in topic_order or ():
+        if topic in by_appearance:
+            groups[topic] = by_appearance.pop(topic)
+    groups.update(by_appearance)
     return groups
 
 
@@ -106,30 +117,35 @@ def dedupe(news_list: list[News]) -> list[News]:
     return [news for news in news_list if not storage.is_sent(news.url)]
 
 
-def rank(news_list: list[News], target_count: int = DIGEST_RANK_TARGET_COUNT) -> list[News]:
+def rank(
+    news_list: list[News],
+    target_count: int = DIGEST_RANK_TARGET_COUNT,
+    topic_order: Optional[Sequence[str]] = None,
+) -> list[News]:
     """Отобрать до `target_count` новостей, поровну чередуя темы.
 
     Внутри темы новости идут от свежих к старым. Темы обходятся по кругу
-    в порядке первого появления.
+    в порядке `topic_order`, остальные — после них в порядке первого появления.
 
     Args:
         news_list: Новости, прошедшие все фильтры.
         target_count: Максимальное число новостей в выпуске.
+        topic_order: Порядок тем (см. group_by_topic).
 
     Returns:
         Отобранные новости в порядке обхода.
     """
-    groups = group_by_topic(news_list)
-    topic_order = list(groups)
+    groups = group_by_topic(news_list, topic_order)
+    ordered_topics = list(groups)
 
     for group in groups.values():
         group.sort(key=lambda n: n.published_at, reverse=True)
 
-    indices = {topic: 0 for topic in topic_order}
+    indices = {topic: 0 for topic in ordered_topics}
     result = []
     while len(result) < target_count:
         added_any = False
-        for topic in topic_order:
+        for topic in ordered_topics:
             if len(result) >= target_count:
                 break
             idx = indices[topic]

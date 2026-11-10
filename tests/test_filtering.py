@@ -131,6 +131,13 @@ class TestDedupe:
 
 
 class TestRank:
+    def test_topics_are_visited_in_topic_order(self):
+        news_list = [make_news("n1", topic="Новости AI"), make_news("a1", topic="AI-агенты")]
+
+        result = rank(news_list, target_count=10, topic_order=["AI-агенты", "Новости AI"])
+
+        assert [n.url for n in result] == ["a1", "n1"]
+
     def test_round_robin_and_order(self):
         a1 = make_news("a1", topic="A", days_ago=0)
         a2 = make_news("a2", topic="A", days_ago=1)

@@ -48,6 +48,32 @@ class TestBuildIntro:
 
 
 class TestBuildParts:
+    def test_sections_follow_topic_order_not_appearance(self):
+        news_list = [make_news("n1", topic="Новости AI"), make_news("a1", topic="AI-агенты")]
+        order = ["AI-агенты", "Вайбкодинг", "Новости AI"]
+
+        text = build_parts(news_list, topic_order=order)[0].text
+
+        assert text.index("=== AI-агенты ===") < text.index("=== Новости AI ===")
+
+    def test_unknown_topics_go_last_in_appearance_order(self):
+        news_list = [
+            make_news("z", topic="Z"),
+            make_news("y", topic="Y"),
+            make_news("k", topic="Известная"),
+        ]
+
+        text = build_parts(news_list, topic_order=["Известная"])[0].text
+
+        assert text.index("=== Известная ===") < text.index("=== Z ===") < text.index("=== Y ===")
+
+    def test_intro_lists_topics_in_topic_order(self):
+        news_list = [make_news("n1", topic="Новости AI"), make_news("a1", topic="AI-агенты")]
+
+        intro = build_intro(news_list, topic_order=["AI-агенты", "Новости AI"])
+
+        assert intro.endswith("AI-агенты: 1, Новости AI: 1")
+
     def test_very_long_title_still_fits_telegram_limit(self):
         news_list = [make_news("long", title="слово " * 1000)] + make_many()
 

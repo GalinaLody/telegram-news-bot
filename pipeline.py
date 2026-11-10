@@ -106,20 +106,23 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
         deduped_news = dedupe(recent_news)
         logger.info(f"После dedupe: {len(deduped_news)}")
 
-        ranked_news = rank(deduped_news)
+        # Порядок тем в topics.yaml задаёт порядок отбора, вступления и разделов дайджеста.
+        topic_order = list(load_topic_keywords())
+
+        ranked_news = rank(deduped_news, topic_order=topic_order)
         logger.info(f"После rank: {len(ranked_news)}")
 
         if not ranked_news:
             logger.info("Нет новых новостей")
 
         # Порядок в начале сообщения: вступление, затем предупреждение об упавших источниках.
-        header_blocks = [build_intro(ranked_news)]
+        header_blocks = [build_intro(ranked_news, topic_order=topic_order)]
         if failed_sources:
             failed_names = ", ".join(name for name, _ in failed_sources)
             header_blocks.append(f"⚠️ Без новостей (ошибка сбора): {failed_names}")
         header = "\n\n".join(block for block in header_blocks if block)
 
-        parts = build_parts(ranked_news, header=header)
+        parts = build_parts(ranked_news, header=header, topic_order=topic_order)
         total_parts = len(parts)
 
         if dry_run:

@@ -137,3 +137,21 @@ def test_dry_run_sends_and_marks_nothing(monkeypatch, three_parts, capsys):
     assert sent == []
     assert not any(storage.is_sent(news.url) for news in three_parts)
     assert "--- Часть 1/" in capsys.readouterr().out
+
+
+def test_sections_and_intro_follow_topics_yaml_order(monkeypatch):
+    news_list = [make_news("https://example.com/n", topic="Новости AI"), make_news("https://example.com/a", topic="AI-агенты")]
+
+    async def fake_collect_all():
+        return news_list, []
+
+    sent = []
+    monkeypatch.setattr(pipeline, "collect_all", fake_collect_all)
+    monkeypatch.setattr(pipeline, "send_message", lambda chat_id, text: sent.append(text))
+    monkeypatch.setattr(pipeline, "OWNER_CHAT_ID", "42")
+
+    asyncio.run(pipeline.run_weekly_digest(dry_run=False))
+
+    text = sent[0]
+    assert "AI-агенты: 1, Новости AI: 1" in text
+    assert text.index("=== AI-агенты ===") < text.index("=== Новости AI ===")
