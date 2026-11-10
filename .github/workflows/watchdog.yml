@@ -15,18 +15,19 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      # Считаем запуски weekly_digest.yml, созданные сегодня (по UTC).
+      # Считаем запуски weekly_digest.yml по расписанию, созданные сегодня (по UTC).
+      # Ручной запуск (workflow_dispatch) не считается: он не должен скрывать пропущенный плановый.
       - name: Count today's digest runs
         id: count
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           total=$(gh api -X GET "repos/${{ github.repository }}/actions/workflows/weekly_digest.yml/runs" \
-            -f created=">=$(date -u +%F)" --jq '.total_count')
-          echo "Запусков дайджеста сегодня: $total"
+            -f event=schedule -f created=">=$(date -u +%F)" --jq '.total_count')
+          echo "Запусков дайджеста по расписанию сегодня: $total"
           echo "total=$total" >> "$GITHUB_OUTPUT"
 
-      # Запусков нет — GitHub не стартовал workflow по расписанию, предупреждаем в Telegram.
+      # Плановых запусков нет — GitHub не стартовал workflow по расписанию, предупреждаем в Telegram.
       # Успешность запуска не проверяем: об ошибке придёт письмо от GitHub.
       - name: Notify if digest did not run
         if: steps.count.outputs.total == '0'
