@@ -1,13 +1,42 @@
 """Сборка дайджеста: текст блоков и нарезка на сообщения Telegram."""
 
-from datetime import timezone
+from datetime import datetime, timezone
+from typing import Optional
 
-from constants import DIGEST_BLOCK_SEPARATOR_LEN, DIGEST_TELEGRAM_MESSAGE_MAX_LEN
+from constants import (
+    DIGEST_BLOCK_SEPARATOR_LEN,
+    DIGEST_TELEGRAM_MESSAGE_MAX_LEN,
+    DIGEST_TIMEZONE,
+)
 from filtering import group_by_topic
 from models import DigestPart, News
 from summarizer import make_summary
 
 EMPTY_DIGEST_TEXT = "На этой неделе новых новостей не нашлось."
+
+
+def build_intro(news_list: list[News], now: Optional[datetime] = None) -> str:
+    """Собрать вступление дайджеста: дата выпуска и число новостей по темам.
+
+    Args:
+        news_list: Отобранные новости.
+        now: Момент запуска; по умолчанию текущее время. Дата берётся
+            по времени Стамбула.
+
+    Returns:
+        Две строки вида «AI-дайджест за 10.11.2026» и «Новостей: 3 — Тема: 2, ...»;
+        темы идут в том же порядке, что и в теле дайджеста. Для пустого списка
+        новостей — пустая строка.
+    """
+    if not news_list:
+        return ""
+
+    now = now or datetime.now(timezone.utc)
+    date_text = now.astimezone(DIGEST_TIMEZONE).strftime("%d.%m.%Y")
+    counts = ", ".join(
+        f"{topic}: {len(topic_news)}" for topic, topic_news in group_by_topic(news_list).items()
+    )
+    return f"AI-дайджест за {date_text}\nНовостей: {len(news_list)} — {counts}"
 
 
 def _format_news(news: News) -> str:

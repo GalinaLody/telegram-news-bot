@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from builder import EMPTY_DIGEST_TEXT, build_parts
+from builder import EMPTY_DIGEST_TEXT, build_intro, build_parts
 from models import News
 
 
@@ -22,6 +22,29 @@ def make_many(count_per_topic=3, topics=("A", "B", "C")):
         for topic in topics
         for i in range(count_per_topic)
     ]
+
+
+class TestBuildIntro:
+    def test_counts_by_topic_in_body_order(self):
+        news_list = [
+            make_news("b1", topic="Вайбкодинг"),
+            make_news("a1", topic="AI-агенты"),
+            make_news("b2", topic="Вайбкодинг"),
+        ]
+        now = datetime(2026, 11, 10, 4, 0, tzinfo=timezone.utc)
+
+        intro = build_intro(news_list, now=now)
+
+        assert intro == "AI-дайджест за 10.11.2026\nНовостей: 3 — Вайбкодинг: 2, AI-агенты: 1"
+
+    def test_date_is_istanbul_date(self):
+        news_list = [make_news("a", topic="A")]
+        now = datetime(2026, 11, 9, 22, 30, tzinfo=timezone.utc)
+
+        assert build_intro(news_list, now=now).startswith("AI-дайджест за 10.11.2026\n")
+
+    def test_empty_for_no_news(self):
+        assert build_intro([]) == ""
 
 
 class TestBuildParts:

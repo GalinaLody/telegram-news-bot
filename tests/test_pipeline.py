@@ -66,6 +66,22 @@ def test_failure_on_second_part_keeps_first_marked_and_reports_progress(monkeypa
     assert f"Отправлено частей: 1 из {len(parts)}" in error_message
 
 
+def test_first_part_starts_with_intro_then_failed_sources_warning(monkeypatch, three_parts):
+    async def fake_collect_all():
+        return three_parts, [("Сломанный источник", "boom")]
+
+    sent = []
+    monkeypatch.setattr(pipeline, "collect_all", fake_collect_all)
+    monkeypatch.setattr(pipeline, "send_message", lambda chat_id, text: sent.append(text))
+
+    asyncio.run(pipeline.run_weekly_digest(dry_run=False))
+
+    first = sent[0]
+    assert first.startswith("AI-дайджест за ")
+    assert first.index("Новостей: 9") < first.index("⚠️ Без новостей") < first.index("=== Тема ===")
+    assert all("AI-дайджест за" not in text for text in sent[1:])
+
+
 def test_dry_run_sends_and_marks_nothing(monkeypatch, three_parts, capsys):
     sent = []
     monkeypatch.setattr(pipeline, "send_message", lambda chat_id, text: sent.append(text))

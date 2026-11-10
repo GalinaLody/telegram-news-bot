@@ -1,7 +1,12 @@
+from datetime import timedelta, timezone
+
 # main.py
 MAIN_MISSING_ENV_EXIT_CODE = 1
 
-# digest.py
+# filtering.py, summarizer.py, builder.py
+# Часовой пояс дайджеста: в Турции с 2016 года круглый год UTC+3 без перехода на летнее время.
+# ZoneInfo не используем: на Windows для неё нужен отдельный пакет tzdata.
+DIGEST_TIMEZONE = timezone(timedelta(hours=3), "Europe/Istanbul")
 # Окно дайджеста в днях: по нему фильтруются новости и ограничивается выгрузка из Telegram.
 DIGEST_FILTER_RECENT_DAYS = 7
 DIGEST_RANK_TARGET_COUNT = 25

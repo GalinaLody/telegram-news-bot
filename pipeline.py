@@ -1,7 +1,7 @@
 import logging
 
 import storage
-from builder import build_parts
+from builder import build_intro, build_parts
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
 from config import OWNER_CHAT_ID, load_sources, load_topic_keywords
@@ -95,10 +95,12 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
         if not ranked_news:
             logger.info("Нет новых новостей")
 
-        header = ""
+        # Порядок в начале сообщения: вступление, затем предупреждение об упавших источниках.
+        header_blocks = [build_intro(ranked_news)]
         if failed_sources:
             failed_names = ", ".join(name for name, _ in failed_sources)
-            header = f"⚠️ Без новостей (ошибка сбора): {failed_names}"
+            header_blocks.append(f"⚠️ Без новостей (ошибка сбора): {failed_names}")
+        header = "\n\n".join(block for block in header_blocks if block)
 
         parts = build_parts(ranked_news, header=header)
         total_parts = len(parts)
