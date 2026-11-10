@@ -20,8 +20,17 @@ def _get_connection() -> sqlite3.Connection:
     return sqlite3.connect(DB_PATH)
 
 
-def _init_db() -> None:
-    """Создать таблицу sent_news, если её нет, и нормализовать сохранённые URL."""
+def _get_readonly_connection() -> sqlite3.Connection:
+    """Открыть digest.db только для чтения (файл не создаётся и не меняется)."""
+    return sqlite3.connect(f"{DB_PATH.as_uri()}?mode=ro", uri=True)
+
+
+def init_db() -> None:
+    """Создать таблицу sent_news, если её нет, и нормализовать сохранённые URL.
+
+    Вызывается явно при реальном запуске (не при импорте модуля), потому что
+    меняет файл базы. В режиме --dry-run не вызывается.
+    """
     with closing(_get_connection()) as conn:
         conn.execute(
             """
@@ -63,11 +72,12 @@ def normalize_stored_urls() -> int:
     return changed
 
 
-_init_db()
-
-
 def is_sent(url: str) -> bool:
     """Проверить, отправлялась ли новость с таким URL раньше.
+
+    База открывается только для чтения, поэтому проверка не меняет файл
+    digest.db (важно для --dry-run). Если файла или таблицы ещё нет, считается,
+    что ничего не отправлялось.
 
     Args:
         url: Нормализованный URL новости.
@@ -75,9 +85,12 @@ def is_sent(url: str) -> bool:
     Returns:
         True, если URL есть в таблице sent_news.
     """
-    with closing(_get_connection()) as conn:
-        cursor = conn.execute("SELECT 1 FROM sent_news WHERE url = ?", (url,))
-        return cursor.fetchone() is not None
+    try:
+        with closing(_get_readonly_connection()) as conn:
+            cursor = conn.execute("SELECT 1 FROM sent_news WHERE url = ?", (url,))
+            return cursor.fetchone() is not None
+    except sqlite3.OperationalError:
+        return False
 
 
 def mark_sent(url: str) -> None:

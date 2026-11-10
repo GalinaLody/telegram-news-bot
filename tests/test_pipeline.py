@@ -1,5 +1,7 @@
 import asyncio
 import functools
+import sqlite3
+from contextlib import closing
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -21,7 +23,7 @@ def make_news(url, topic="Тема"):
 
 
 @pytest.fixture
-def three_parts(monkeypatch, temp_db):
+def three_parts(monkeypatch):
     """Девять новостей, которые при max_len=600 раскладываются минимум на три части."""
     news_list = [make_news(f"https://example.com/{i}") for i in range(9)]
 
@@ -80,6 +82,38 @@ def test_first_part_starts_with_intro_then_failed_sources_warning(monkeypatch, t
     assert first.startswith("AI-дайджест за ")
     assert first.index("Новостей: 9") < first.index("⚠️ Без новостей") < first.index("=== Тема ===")
     assert all("AI-дайджест за" not in text for text in sent[1:])
+
+
+def test_real_run_initializes_db_and_migrates_urls(monkeypatch, three_parts, temp_db):
+    dirty = "https://habr.com/ru/articles/1/?utm_source=rss"
+    with closing(sqlite3.connect(temp_db)) as conn:
+        conn.execute("INSERT INTO sent_news (url, sent_at) VALUES (?, ?)", (dirty, "2026-11-02T04:00:00+00:00"))
+        conn.commit()
+    monkeypatch.setattr(pipeline, "send_message", lambda chat_id, text: None)
+
+    asyncio.run(pipeline.run_weekly_digest(dry_run=False))
+
+    assert storage.is_sent("https://habr.com/ru/articles/1")
+    assert not storage.is_sent(dirty)
+
+
+def test_dry_run_does_not_touch_db_file(monkeypatch, three_parts, isolated_db_path):
+    monkeypatch.setattr(pipeline, "send_message", lambda chat_id, text: None)
+
+    asyncio.run(pipeline.run_weekly_digest(dry_run=True))
+
+    assert not isolated_db_path.exists()
+
+
+def test_dry_run_leaves_existing_db_bytes_unchanged(monkeypatch, three_parts, temp_db):
+    with closing(sqlite3.connect(temp_db)) as conn:
+        conn.execute("INSERT INTO sent_news (url, sent_at) VALUES (?, ?)", ("https://habr.com/a/?utm_source=rss", "2026-11-02T04:00:00+00:00"))
+        conn.commit()
+    before = temp_db.read_bytes()
+
+    asyncio.run(pipeline.run_weekly_digest(dry_run=True))
+
+    assert temp_db.read_bytes() == before
 
 
 def test_dry_run_sends_and_marks_nothing(monkeypatch, three_parts, capsys):

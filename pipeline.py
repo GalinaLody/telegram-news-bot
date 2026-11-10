@@ -85,12 +85,15 @@ async def run_weekly_digest(dry_run: bool = True) -> None:
     ошибке владельцу уходит уведомление, и исключение пробрасывается дальше.
 
     Args:
-        dry_run: Если True, части только печатаются; ничего не отправляется
-            и не помечается в базе.
+        dry_run: Если True, части только печатаются; ничего не отправляется,
+            а файл digest.db не создаётся и не меняется (база только читается).
     """
     sent_parts = 0
     total_parts = 0
     try:
+        if not dry_run:
+            storage.init_db()
+
         news_items, failed_sources = await collect_all()
         logger.info(f"Всего собрано новостей: {len(news_items)}")
 

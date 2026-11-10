@@ -24,6 +24,27 @@ class TestIsSentMarkSent:
         assert storage.is_sent(url) is True
 
 
+class TestNoSideEffects:
+    def test_import_and_is_sent_do_not_create_db(self, isolated_db_path):
+        assert storage.is_sent("https://example.com/x") is False
+
+        assert not isolated_db_path.exists()
+
+    def test_is_sent_does_not_change_existing_db(self, temp_db):
+        storage.mark_sent("https://example.com/a")
+        before = temp_db.read_bytes()
+
+        storage.is_sent("https://example.com/a")
+        storage.is_sent("https://example.com/b")
+
+        assert temp_db.read_bytes() == before
+
+    def test_is_sent_without_table_returns_false(self, isolated_db_path):
+        sqlite3.connect(isolated_db_path).close()
+
+        assert storage.is_sent("https://example.com/x") is False
+
+
 class TestNormalizeStoredUrls:
     def _insert(self, rows):
         with closing(sqlite3.connect(storage.DB_PATH)) as conn:
