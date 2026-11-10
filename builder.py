@@ -46,7 +46,7 @@ def _format_news(news: News) -> str:
             news.title,
             make_summary(news.summary_raw),
             news.url,
-            news.published_at.astimezone(timezone.utc).strftime("%d.%m.%Y %H:%M UTC"),
+            news.published_at.astimezone(DIGEST_TIMEZONE).strftime("%d.%m.%Y"),
         ]
     )
 

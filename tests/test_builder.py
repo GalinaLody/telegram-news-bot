@@ -48,6 +48,15 @@ class TestBuildIntro:
 
 
 class TestBuildParts:
+    def test_date_is_shown_in_istanbul_time(self):
+        news = make_news("late-evening")
+        news.published_at = datetime(2026, 11, 9, 22, 30, tzinfo=timezone.utc)
+
+        text = build_parts([news])[0].text
+
+        assert text.splitlines()[-1] == "10.11.2026"
+        assert "UTC" not in text
+
     def test_groups_by_topic_with_headers(self):
         a = make_news("a", topic="A")
         b = make_news("b", topic="B")
