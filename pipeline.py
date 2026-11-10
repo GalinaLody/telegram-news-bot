@@ -8,6 +8,7 @@ from config import OWNER_CHAT_ID, load_sources
 from filtering import dedupe, filter_recent, rank, remove_duplicates
 from models import News
 from sender import send_message
+from urls import normalize_url
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,6 +49,9 @@ async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
             logger.warning(f"Источник '{source['name']}' упал: {exc}")
             failed_sources.append((source["name"], str(exc)))
             continue
+
+        for news in news_items:
+            news.url = normalize_url(news.url)
 
         if len(topics) > 1:
             for i, news in enumerate(news_items):

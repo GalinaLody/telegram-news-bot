@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from constants import STORAGE_CLEANUP_OLD_DAYS
+from urls import normalize_url
 
 DB_PATH = Path(__file__).resolve().parent / "digest.db"
 
@@ -23,6 +24,35 @@ def _init_db() -> None:
             """
         )
         conn.commit()
+
+    normalize_stored_urls()
+
+
+def normalize_stored_urls() -> int:
+    """Привести URL в таблице sent_news к нормализованному виду (миграция).
+
+    Если после нормализации ссылка совпала с уже имеющейся записью, остаётся
+    одна запись (уже существующая), дата отправки сохраняется. Безопасно
+    вызывать повторно: уже нормализованные записи не меняются.
+
+    Returns:
+        Количество изменённых или удалённых записей.
+    """
+    changed = 0
+    with closing(_get_connection()) as conn:
+        rows = conn.execute("SELECT url, sent_at FROM sent_news").fetchall()
+        for url, sent_at in rows:
+            normalized = normalize_url(url)
+            if normalized == url:
+                continue
+            conn.execute(
+                "INSERT OR IGNORE INTO sent_news (url, sent_at) VALUES (?, ?)",
+                (normalized, sent_at),
+            )
+            conn.execute("DELETE FROM sent_news WHERE url = ?", (url,))
+            changed += 1
+        conn.commit()
+    return changed
 
 
 _init_db()
