@@ -1,22 +1,16 @@
 import calendar
-import logging
 import re
 import socket
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import List, Optional
 
 import feedparser
-import yaml
 
 from constants import COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS
 from models import News
 
 # feedparser качает ленты через urllib без таймаута — зависший сервер блокировал бы процесс навечно.
 socket.setdefaulttimeout(COLLECTORS_RSS_COLLECTOR_SOCKET_TIMEOUT_SECONDS)
-
-SOURCES_PATH = Path(__file__).resolve().parent.parent / "sources.yaml"
 
 
 def fetch_rss(
@@ -64,25 +58,3 @@ def fetch_rss(
 
     return news_list
 
-
-if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
-    logging.basicConfig(level=logging.INFO)
-
-    with open(SOURCES_PATH, encoding="utf-8") as f:
-        sources = yaml.safe_load(f)
-
-    for source in sources:
-        if source.get("type") != "rss" or not source.get("enabled"):
-            continue
-
-        news_items = fetch_rss(
-            url=source["url"],
-            source_name=source["name"],
-            topic=", ".join(source.get("topics", [])),
-            keywords=source.get("keywords"),
-        )
-
-        first_title = news_items[0].title if news_items else "—"
-        print(f"{source['name']}: получено {len(news_items)} новостей, первая: {first_title}")

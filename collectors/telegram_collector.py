@@ -1,7 +1,4 @@
-import asyncio
-import logging
 import re
-import sys
 from datetime import datetime, timedelta, timezone
 
 from telethon import TelegramClient
@@ -10,8 +7,6 @@ from telethon.sessions import StringSession
 from config import TG_API_HASH, TG_API_ID, TG_SESSION
 from constants import (
     COLLECTORS_TELEGRAM_COLLECTOR_TITLE_MAX_CHARS,
-    COLLECTORS_TELEGRAM_COLLECTOR_VERYVIBECODING_PREVIEW_COUNT,
-    COLLECTORS_TELEGRAM_COLLECTOR_VIBECODING_PREVIEW_COUNT,
     DIGEST_FILTER_RECENT_DAYS,
 )
 from models import News
@@ -67,32 +62,3 @@ async def fetch_telegram_channel(
 
     return news_list
 
-
-if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8")
-    sys.stderr.reconfigure(encoding="utf-8")
-    logging.basicConfig(level=logging.INFO)
-
-    vibecoding_news = asyncio.run(
-        fetch_telegram_channel(
-            channel_username="vibecoding_tg",
-            topic="Вайбкодинг",
-            since_days=DIGEST_FILTER_RECENT_DAYS,
-        )
-    )
-
-    print(f"Получено новостей: {len(vibecoding_news)}")
-    for news in vibecoding_news[:COLLECTORS_TELEGRAM_COLLECTOR_VIBECODING_PREVIEW_COUNT]:
-        print(f"{news.published_at} — {news.title}")
-
-    veryvibecoding_news = asyncio.run(
-        fetch_telegram_channel(
-            channel_username="veryvibecoding",
-            topic="Вайбкодинг, AI-агенты",
-            since_days=DIGEST_FILTER_RECENT_DAYS,
-        )
-    )
-
-    print(f"\nvery vibecoding — получено новостей: {len(veryvibecoding_news)}")
-    for news in veryvibecoding_news[:COLLECTORS_TELEGRAM_COLLECTOR_VERYVIBECODING_PREVIEW_COUNT]:
-        print(f"{news.published_at} — {news.title}")
