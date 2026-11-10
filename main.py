@@ -3,7 +3,7 @@ import asyncio
 import sys
 
 import config
-from scheduler import run_weekly_digest
+from pipeline import run_weekly_digest
 
 
 def main() -> None:
