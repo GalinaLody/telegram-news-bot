@@ -1,14 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from digest import (
-    build_digest,
-    dedupe,
-    filter_recent,
-    make_summary,
-    rank,
-    remove_duplicates,
-    split_for_telegram,
-)
+from filtering import dedupe, filter_recent, group_by_topic, rank, remove_duplicates
 from models import News
 
 
@@ -22,6 +14,22 @@ def make_news(url, topic="Тема", days_ago=0, summary="Summary text", title="
         summary_raw=summary,
         topic=topic,
     )
+
+
+class TestGroupByTopic:
+    def test_keeps_first_appearance_order_of_topics(self):
+        b1 = make_news("b1", topic="B")
+        a1 = make_news("a1", topic="A")
+        b2 = make_news("b2", topic="B")
+
+        groups = group_by_topic([b1, a1, b2])
+
+        assert list(groups) == ["B", "A"]
+        assert groups["B"] == [b1, b2]
+        assert groups["A"] == [a1]
+
+    def test_empty_list_gives_empty_dict(self):
+        assert group_by_topic([]) == {}
 
 
 class TestFilterRecent:
@@ -74,50 +82,3 @@ class TestRank:
         result = rank(news_list, target_count=3)
 
         assert len(result) == 3
-
-
-class TestMakeSummary:
-    def test_strips_html_tags(self):
-        text = "<p>Hello <b>world</b></p>"
-
-        assert make_summary(text) == "Hello world"
-
-    def test_truncates_at_word_boundary(self):
-        text = "one two three four five"
-
-        result = make_summary(text, max_chars=15)
-
-        assert result == "one two three…"
-        assert " …" not in result
-
-
-class TestBuildDigest:
-    def test_groups_by_topic_with_headers(self):
-        a = make_news("a", topic="A")
-        b = make_news("b", topic="B")
-
-        text = build_digest([a, b])
-
-        assert "=== A ===" in text
-        assert "=== B ===" in text
-        assert text.index("=== A ===") < text.index("=== B ===")
-
-
-class TestSplitForTelegram:
-    def test_respects_limit_and_does_not_split_entries(self):
-        news_list = [make_news(f"n{i}", topic="A", summary="x" * 100) for i in range(50)]
-        text = build_digest(news_list)
-
-        parts = split_for_telegram(text, max_len=500)
-
-        assert all(len(p) <= 500 for p in parts)
-        assert "\n\n".join(parts) == text
-
-    def test_single_part_when_under_limit(self):
-        news_list = [make_news(f"n{i}", topic="A") for i in range(3)]
-        text = build_digest(news_list)
-
-        parts = split_for_telegram(text, max_len=4096)
-
-        assert len(parts) == 1
-        assert parts[0] == text

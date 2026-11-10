@@ -1,10 +1,11 @@
 import logging
 
 import storage
+from builder import build_digest, split_for_telegram
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
 from config import OWNER_CHAT_ID, load_sources
-from digest import build_digest, dedupe, filter_recent, rank, remove_duplicates, split_for_telegram
+from filtering import dedupe, filter_recent, rank, remove_duplicates
 from models import News
 from sender import send_message
 
