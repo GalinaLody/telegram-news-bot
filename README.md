@@ -45,11 +45,11 @@
 Нужен Python 3.12. Команды для Git Bash на Windows:
 
 ```bash
-python -m venv venv
+py -3.12 -m venv venv
 source venv/Scripts/activate
 pip install -r requirements.txt -r requirements-dev.txt
 cp .env.example .env        # затем впишите значения в .env
-python main.py --dry-run    # предпросмотр: печатает дайджест, ничего не отправляет и не помечает
+python main.py --dry-run    # предпросмотр: печатает дайджест; ничего не отправляет, digest.db не меняется
 python main.py              # настоящий запуск: отправляет дайджест в Telegram
 ```
 
@@ -122,4 +122,4 @@ python -m pytest
 - [`docs/sources_evaluated.md`](docs/sources_evaluated.md) — оценка источников-кандидатов
 - [`docs/sources_all.md`](docs/sources_all.md) — полный список найденных источников
 
-Техническое задание (`TECH_SPEC.md`), план проекта (`PLAN.md`) и бриф (PDF) хранятся локально и в репозиторий не входят.
+Техническое задание (`docs/TECH_SPEC.md`), план проекта (`docs/PLAN.md`) и бриф (PDF) — локальные файлы: в репозитории их нет.
