@@ -48,24 +48,36 @@ def test_marks_news_of_each_delivered_part(monkeypatch, three_parts):
 
 def test_failure_on_second_part_keeps_first_marked_and_reports_progress(monkeypatch, three_parts):
     sent = []
+    built = []
+    real_build_parts = pipeline.build_parts
+
+    def recording_build_parts(*args, **kwargs):
+        built.append(real_build_parts(*args, **kwargs))
+        return built[-1]
 
     def fake_send(chat_id, text):
         sent.append(text)
         if len(sent) == 2:
             raise RuntimeError("boom")
 
+    monkeypatch.setattr(pipeline, "build_parts", recording_build_parts)
     monkeypatch.setattr(pipeline, "send_message", fake_send)
-    parts = pipeline.build_parts(pipeline.rank(three_parts))
-    assert len(parts) >= 3
 
     with pytest.raises(RuntimeError, match="boom"):
         asyncio.run(pipeline.run_weekly_digest(dry_run=False))
 
-    assert all(storage.is_sent(news.url) for news in parts[0].news)
-    assert not any(storage.is_sent(news.url) for part in parts[1:] for news in part.news)
+    total_parts = len(built[0])
+    assert total_parts >= 3
+    # Доставлена только первая отправленная часть (вторая упала); сверяем с её фактическим текстом.
+    delivered_lines = set(sent[0].splitlines())
+    delivered = [news for news in three_parts if news.url in delivered_lines]
+    not_delivered = [news for news in three_parts if news.url not in delivered_lines]
+    assert delivered and not_delivered
+    assert all(storage.is_sent(news.url) for news in delivered)
+    assert not any(storage.is_sent(news.url) for news in not_delivered)
 
     error_message = sent[-1]
-    assert f"Отправлено частей: 1 из {len(parts)}" in error_message
+    assert f"Отправлено частей: 1 из {total_parts}" in error_message
 
 
 def test_first_part_starts_with_intro_then_failed_sources_warning(monkeypatch, three_parts):
