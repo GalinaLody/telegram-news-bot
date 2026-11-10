@@ -1,6 +1,13 @@
 from datetime import datetime, timedelta, timezone
 
-from filtering import dedupe, filter_recent, group_by_topic, rank, remove_duplicates
+from filtering import (
+    assign_topic,
+    dedupe,
+    filter_recent,
+    group_by_topic,
+    rank,
+    remove_duplicates,
+)
 from models import News
 
 
@@ -14,6 +21,63 @@ def make_news(url, topic="Тема", days_ago=0, summary="Summary text", title="
         summary_raw=summary,
         topic=topic,
     )
+
+
+HABR_AI_TOPICS = ["AI-агенты", "AI-инструменты", "Работа и заработок с AI"]
+KEYWORDS = {
+    "AI-агенты": ["агент", "agent", "MCP"],
+    "AI-инструменты": ["инструмент", "tool", "релиз"],
+    "Работа и заработок с AI": ["заработ", "вакан", "code"],
+}
+
+
+class TestAssignTopic:
+    def test_keyword_in_title(self):
+        news = make_news("u", title="Новый агент от OpenAI", summary="Без ключей")
+
+        assert assign_topic(news, HABR_AI_TOPICS, KEYWORDS) == "AI-агенты"
+
+    def test_no_keywords_gives_first_topic_of_source(self):
+        news = make_news("u", title="Погода в Стамбуле", summary="Солнечно")
+
+        assert assign_topic(news, HABR_AI_TOPICS, KEYWORDS) == "AI-агенты"
+
+    def test_keyword_only_in_summary(self):
+        news = make_news("u", title="Заголовок без слов", summary="Вышел новый инструмент")
+
+        assert assign_topic(news, HABR_AI_TOPICS, KEYWORDS) == "AI-инструменты"
+
+    def test_title_match_beats_summary_match_of_earlier_topic(self):
+        news = make_news("u", title="Как заработать на нейросетях", summary="Говорим про агентов")
+
+        assert assign_topic(news, HABR_AI_TOPICS, KEYWORDS) == "Работа и заработок с AI"
+
+    def test_first_topic_wins_when_several_match(self):
+        news = make_news("u", title="Инструмент для агентов", summary="")
+
+        assert assign_topic(news, HABR_AI_TOPICS, KEYWORDS) == "AI-агенты"
+
+    def test_match_is_case_insensitive_and_starts_at_word_boundary(self):
+        agent = make_news("u1", title="АГЕНТЫ наступают", summary="")
+        inside_word = make_news("u2", title="Субагентство", summary="")
+
+        assert assign_topic(agent, HABR_AI_TOPICS, KEYWORDS) == "AI-агенты"
+        # «агент» внутри слова не считается: совпадений нет, берётся первая тема
+        assert assign_topic(inside_word, ["AI-инструменты", "AI-агенты"], KEYWORDS) == (
+            "AI-инструменты"
+        )
+
+    def test_html_tags_in_summary_do_not_match(self):
+        news = make_news("u", title="Заголовок", summary="<pre><code>print(1)</code></pre>")
+
+        # ключ «code» есть у третьей темы, но он только в имени тега
+        assert assign_topic(news, HABR_AI_TOPICS, KEYWORDS) == "AI-агенты"
+
+    def test_only_topics_of_the_source_are_considered(self):
+        news = make_news("u", title="Вакансия мечты", summary="")
+
+        # у «Работа и заработок» есть ключ «вакан», но этой темы нет у источника
+        assert assign_topic(news, ["AI-инструменты", "AI-агенты"], KEYWORDS) == "AI-инструменты"
 
 
 class TestGroupByTopic:

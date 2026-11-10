@@ -4,8 +4,8 @@ import storage
 from builder import build_parts
 from collectors.rss_collector import fetch_rss
 from collectors.telegram_collector import fetch_telegram_channel
-from config import OWNER_CHAT_ID, load_sources
-from filtering import dedupe, filter_recent, rank, remove_duplicates
+from config import OWNER_CHAT_ID, load_sources, load_topic_keywords
+from filtering import assign_topic, dedupe, filter_recent, rank, remove_duplicates
 from models import News
 from sender import send_message
 from urls import normalize_url
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
     enabled_sources = [s for s in load_sources() if s.get("enabled")]
+    topic_keywords = load_topic_keywords()
     logger.info(f"Источников для сбора: {len(enabled_sources)}")
 
     all_news: list[News] = []
@@ -54,8 +55,8 @@ async def collect_all() -> tuple[list[News], list[tuple[str, str]]]:
             news.url = normalize_url(news.url)
 
         if len(topics) > 1:
-            for i, news in enumerate(news_items):
-                news.topic = topics[i % len(topics)]
+            for news in news_items:
+                news.topic = assign_topic(news, topics, topic_keywords)
 
         logger.info(f"{source['name']}: получено {len(news_items)} новостей")
         all_news.extend(news_items)

@@ -16,6 +16,7 @@ from constants import MAIN_MISSING_ENV_EXIT_CODE
 load_dotenv()
 
 SOURCES_PATH = Path(__file__).resolve().parent / "sources.yaml"
+TOPICS_PATH = Path(__file__).resolve().parent / "topics.yaml"
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 OWNER_CHAT_ID = os.getenv("OWNER_CHAT_ID")
@@ -47,4 +48,14 @@ def load_sources() -> list[dict]:
         Все записи файла, включая отключённые (enabled: false).
     """
     with open(SOURCES_PATH, encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def load_topic_keywords() -> dict[str, list[str]]:
+    """Прочитать ключевые слова тем из topics.yaml.
+
+    Returns:
+        Словарь «тема -> список ключевых слов».
+    """
+    with open(TOPICS_PATH, encoding="utf-8") as f:
         return yaml.safe_load(f)

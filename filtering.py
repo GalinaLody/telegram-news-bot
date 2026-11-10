@@ -4,11 +4,46 @@
 по дате, проверка «уже отправлено», отбор по темам.
 """
 
+import html
+import re
 from datetime import datetime, timedelta, timezone
 
 import storage
 from constants import DIGEST_FILTER_RECENT_DAYS, DIGEST_RANK_TARGET_COUNT
 from models import News
+
+
+def _matches_any(text: str, keywords: list[str]) -> bool:
+    """Проверить, начинается ли в тексте хотя бы одно слово с одного из ключей."""
+    return any(
+        re.search(rf"\b{re.escape(keyword)}\w*", text, re.IGNORECASE) for keyword in keywords
+    )
+
+
+def assign_topic(
+    news: News, source_topics: list[str], topic_keywords: dict[str, list[str]]
+) -> str:
+    """Выбрать тему новости из тем её источника по ключевым словам.
+
+    Сначала перебираются темы источника в заданном порядке и ключи ищутся
+    в заголовке; если там совпадений нет, тот же перебор идёт по тексту
+    новости (HTML-теги из текста вырезаются, иначе, например, `<code>`
+    считалось бы совпадением с ключом «code»).
+
+    Args:
+        news: Новость, для которой выбирается тема.
+        source_topics: Темы источника в порядке из sources.yaml.
+        topic_keywords: Ключевые слова тем (topics.yaml).
+
+    Returns:
+        Первая тема с совпадением; если совпадений нет — первая тема источника.
+    """
+    body = re.sub(r"<[^>]+>", " ", html.unescape(news.summary_raw))
+    for text in (news.title, body):
+        for topic in source_topics:
+            if _matches_any(text, topic_keywords.get(topic, [])):
+                return topic
+    return source_topics[0]
 
 
 def group_by_topic(news_list: list[News]) -> dict[str, list[News]]:
